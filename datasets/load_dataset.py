@@ -24,7 +24,7 @@ import numpy as np
 from scipy.signal import convolve2d
 from typing import List, Tuple
 from abc import ABC, abstractmethod
-
+import pandas as pd
 
 class Dataset(ABC):
     @abstractmethod
@@ -35,6 +35,46 @@ class Dataset(ABC):
     def download(self, destination: str):
         pass
 
+class HTT_example(Dataset):
+    def __init__(self, destination: str = 'images/HTT_example/5-ANG2312_00089-ANG2401_00089'):
+        _, self.dir1, self.dir2 = destination.split('/')[-1].split('-')
+        self.destination = destination
+    
+    def load(self) -> Tuple[List[np.ndarray], List[np.ndarray], np.ndarray, np.ndarray]:
+        print(f'===== Load dataset Hubble Example {self.destination}')
+
+        # load images
+        imgs_id = np.load(self.destination + '/image_order.npy', allow_pickle=True)
+
+        self.imgs_id_db = imgs_id[()][self.dir1]
+        self.imgs_id_q = imgs_id[()][self.dir2]
+
+        fns_db = sorted(glob(self.destination + f'/{self.dir1}/*.png'))
+        fns_q = sorted(glob(self.destination + f'/{self.dir2}/*.png'))
+
+        imgs_db = [np.array(Image.open(fn)) for fn in fns_db]
+        imgs_q = [np.array(Image.open(fn)) for fn in fns_q]
+
+        
+        # Create Ground Truth and save to file in dataset
+        GThard = np.load(self.destination + '/M_gt_hard.npy')
+        #What to do about GTsoft? Make it a copy for now? Add convolution?
+        GTsoft = np.load(self.destination + '/M_gt_soft.npy')
+
+        return imgs_db, imgs_q, GThard, GTsoft
+    
+    def download(self):
+        pass
+    
+    def get_images_names(self):
+        fns_db = sorted(glob(self.destination + f'/{self.dir1}/*.png'))
+        fns_q = sorted(glob(self.destination + f'/{self.dir2}/*.png'))
+        return fns_db, fns_q
+    
+    def get_violations_df(self):
+        violations_entry_db = pd.read_csv(self.destination + f'/{self.dir1}.csv')
+        violations_entry_q = pd.read_csv(self.destination + f'/{self.dir2}.csv')
+        return violations_entry_db, violations_entry_q
 
 class GardensPointDataset(Dataset):
     def __init__(self, destination: str = 'images/GardensPoint/'):
